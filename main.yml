@@ -1,5 +1,5 @@
 version: 2.1
-orb-version: 1.0.0
+orb-version: 1.0.1
 
 description: This orb sends notifications to Microsoft Teams
 
@@ -9,7 +9,7 @@ examples:
     usage:
       version: 2.1
       orbs:
-        ms-teams: opub/ms-teams-orb@1.0.0
+        ms-teams: opub/ms-teams-orb@1.0.1
       jobs:
         build:
           docker:
@@ -43,7 +43,7 @@ commands:
             if [ `echo "$CIRCLE_REPOSITORY_URL" | grep "^git@github.com"` ]; then
               COMMIT_LINK=\[$SHORT_SHA1\]\(https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/commit/$CIRCLE_SHA1\)
             elif [ `echo "$CIRCLE_REPOSITORY_URL" | grep "^git@bitbucket.org"` ]; then
-              COMMIT_LINK=\[$SHORT_SHA1\]\(https://bitbucket.org/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/commit/$CIRCLE_SHA1\)
+              COMMIT_LINK=\[$SHORT_SHA1\]\(https://bitbucket.org/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/commits/$CIRCLE_SHA1\)
             else
               >&2 echo unknown version control system: $CIRCLE_REPOSITORY_URL
               fail
@@ -56,11 +56,14 @@ commands:
               "@type": "MessageCard",
               "@context": "http://schema.org/extensions",
               "themeColor": "__theme_color__",
-              "summary": "CircleCI Build Notification",
+              "title": "__build_status__ $CIRCLE_PROJECT_REPONAME [#${CIRCLE_BUILD_NUM}]($CIRCLE_BUILD_URL)",
               "sections": [
                 {
-                  "activityTitle": "$CIRCLE_PROJECT_REPONAME __build_status__ - [${CIRCLE_JOB} #${CIRCLE_BUILD_NUM}]($CIRCLE_BUILD_URL)",
                   "facts": [
+                    {
+                      "name": "Job",
+                      "value": "[${CIRCLE_JOB}]($CIRCLE_BUILD_URL)"
+                    },
                     {
                       "name": "Branch",
                       "value": "$CIRCLE_BRANCH"
