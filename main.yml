@@ -1,0 +1,104 @@
+version: 2.1
+orb-version: 1.0.0
+
+description: This orb sends notifications to Microsoft Teams
+
+examples:
+  report-command:
+    description: Report the status of a job to MS Teams
+    usage:
+      version: 2.1
+      orbs:
+        ms-teams: opub/ms-teams-orb@1.0.0
+      jobs:
+        build:
+          docker:
+            - image: cimg/base:stable
+          steps:
+            - checkout
+            - run:
+                name: Trigger Failure
+                command: exit 86
+            - ms-teams/report:
+                webhook_url: $MS_TEAMS_WEBHOOK_URL
+
+commands:
+  report:
+    parameters:
+      webhook_url:
+        description: Microsoft Teams connector webhook URL
+        type: string
+      only_on_fail:
+        description: Whether to send notification only after a failure
+        type: boolean
+        default: true
+    steps:
+      - run:
+          name: Prepare Template
+          shell: bash
+          when: always
+          command: |
+            SHORT_SHA1=`echo -n $CIRCLE_SHA1 | head -c 7`
+
+            if [ `echo "$CIRCLE_REPOSITORY_URL" | grep "^git@github.com"` ]; then
+              COMMIT_LINK=\[$SHORT_SHA1\]\(https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/commit/$CIRCLE_SHA1\)
+            elif [ `echo "$CIRCLE_REPOSITORY_URL" | grep "^git@bitbucket.org"` ]; then
+              COMMIT_LINK=\[$SHORT_SHA1\]\(https://bitbucket.org/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/commit/$CIRCLE_SHA1\)
+            else
+              >&2 echo unknown version control system: $CIRCLE_REPOSITORY_URL
+              fail
+            fi
+
+            # Note that the "\<<" in the heredoc declaration is escaped from
+            # CircleCI's parameters syntax.
+            MS_TEAMS_MSG_TEMPLATE=$(cat \<<END_HEREDOC
+            {
+              "@type": "MessageCard",
+              "@context": "http://schema.org/extensions",
+              "themeColor": "__theme_color__",
+              "summary": "CircleCI Build Notification",
+              "sections": [
+                {
+                  "activityTitle": "$CIRCLE_PROJECT_REPONAME __build_status__ - [${CIRCLE_JOB} #${CIRCLE_BUILD_NUM}]($CIRCLE_BUILD_URL)",
+                  "facts": [
+                    {
+                      "name": "Branch",
+                      "value": "$CIRCLE_BRANCH"
+                    },
+                    {
+                      "name": "Author",
+                      "value": "$CIRCLE_USERNAME"
+                    },
+                    {
+                      "name": "Commit",
+                      "value": "$COMMIT_LINK"
+                    }
+                  ],
+                  "markdown": true
+                }
+              ]
+            }
+            END_HEREDOC
+            )
+            echo "$MS_TEAMS_MSG_TEMPLATE" > .ms_teams_message
+      - unless:
+          condition: << parameters.only_on_fail >>
+          steps:
+            - run:
+                name: Report Build Success
+                command: |
+                  MSG_PATH=.ms_teams_success_message
+                  sed -e 's/__build_status__/SUCCESS/' -e 's/__theme_color__/14a603/' .ms_teams_message > $MSG_PATH
+                  curl --fail -H "Content-Type: application/json" \
+                        --data-binary @$MSG_PATH \
+                        << parameters.webhook_url >>
+                when: on_success
+      - run:
+          name: Report Build Failure
+          command: |
+            MSG_PATH=.ms_teams_failure_message
+            sed -e 's/__build_status__/FAILED/' -e 's/__theme_color__/e2091d/' .ms_teams_message > $MSG_PATH
+            curl --fail -H "Content-Type: application/json" \
+                  --data-binary @$MSG_PATH \
+                  << parameters.webhook_url >>
+          when: on_fail
