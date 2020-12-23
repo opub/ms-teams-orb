@@ -1,5 +1,5 @@
 version: 2.1
-orb-version: 1.0.1
+orb-version: 1.0.2
 
 description: This orb sends notifications to Microsoft Teams
 
@@ -9,7 +9,7 @@ examples:
     usage:
       version: 2.1
       orbs:
-        ms-teams: opub/ms-teams-orb@1.0.1
+        ms-teams: opub/ms-teams-orb@1.0.2
       jobs:
         build:
           docker:
@@ -56,9 +56,10 @@ commands:
               "@type": "MessageCard",
               "@context": "http://schema.org/extensions",
               "themeColor": "__theme_color__",
-              "title": "__build_status__ $CIRCLE_PROJECT_REPONAME [#${CIRCLE_BUILD_NUM}]($CIRCLE_BUILD_URL)",
+              "summary": "CircleCI Build Notification",
               "sections": [
                 {
+                  "activityTitle": "## __build_status__ $CIRCLE_PROJECT_REPONAME [#${CIRCLE_BUILD_NUM}]($CIRCLE_BUILD_URL)",
                   "facts": [
                     {
                       "name": "Job",
