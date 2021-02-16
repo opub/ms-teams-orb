@@ -1,5 +1,5 @@
 version: 2.1
-orb-version: 1.0.2
+orb-version: 1.0.3
 
 description: This orb sends notifications to Microsoft Teams
 
@@ -9,7 +9,7 @@ examples:
     usage:
       version: 2.1
       orbs:
-        ms-teams: opub/ms-teams-orb@1.0.2
+        ms-teams: opub/ms-teams-orb@1.0.3
       jobs:
         build:
           docker:
@@ -32,6 +32,10 @@ commands:
         description: Whether to send notification only after a failure
         type: boolean
         default: true
+      message:
+        description: Detailed message to include in body of notification
+        type: string
+        default: __build_status__
     steps:
       - run:
           name: Prepare Template
@@ -76,6 +80,10 @@ commands:
                     {
                       "name": "Commit",
                       "value": "$COMMIT_LINK"
+                    },
+                    {
+                      "name": "Message",
+                      "value": "<< parameters.message >>"
                     }
                   ],
                   "markdown": true
